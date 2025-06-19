@@ -1,5 +1,5 @@
 // Configuração da API
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = '/api'; // <-- Caminho relativo para a API em produção.
 
 // Estado da aplicação
 let produtos = [];
@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listener para drag and drop de imagens
     const imageUpload = document.querySelector('.image-upload');
     imageUpload.addEventListener('dragover', handleDragOver);
+    imageUpload.addEventListener('dragleave', (e) => { e.currentTarget.style.borderColor = '#ccc'; e.currentTarget.style.background = 'transparent'; });
     imageUpload.addEventListener('drop', handleDrop);
 });
 
@@ -133,11 +134,11 @@ async function carregarProdutos() {
             produtos = await response.json();
             renderizarProdutos();
         } else {
-            showAlert('Erro ao carregar produtos', 'error');
+            showAlert('Erro ao carregar produtos.', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        showAlert('Erro de conexão com o servidor', 'error');
+        console.error('Erro em carregarProdutos:', error);
+        showAlert('Erro de conexão com o servidor.', 'error');
     } finally {
         hideLoading();
     }
@@ -146,10 +147,8 @@ async function carregarProdutos() {
 async function salvarProduto(event) {
     event.preventDefault();
     
-    const formData = new FormData(event.target);
     const produtoId = document.getElementById('produtoId').value;
     
-    // Preparar dados do produto
     const produtoData = {
         nome: document.getElementById('nome').value,
         categoria: document.getElementById('categoria').value,
@@ -162,59 +161,47 @@ async function salvarProduto(event) {
         showLoading();
         
         let response;
-        if (produtoId) {
-            // Editar produto existente
-            response = await fetch(`${API_BASE_URL}/produtos/${produtoId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(produtoData)
-            });
-        } else {
-            // Criar novo produto
-            response = await fetch(`${API_BASE_URL}/produtos`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(produtoData)
-            });
-        }
+        const url = produtoId ? `${API_BASE_URL}/produtos/${produtoId}` : `${API_BASE_URL}/produtos`;
+        const method = produtoId ? 'PUT' : 'POST';
+
+        response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(produtoData)
+        });
         
         if (response.ok) {
-            const produto = await response.json();
             showAlert(produtoId ? 'Produto atualizado com sucesso!' : 'Produto criado com sucesso!');
             cancelForm();
-            carregarProdutos();
+            await carregarProdutos();
         } else {
             const error = await response.json();
-            showAlert(error.message || 'Erro ao salvar produto', 'error');
+            showAlert(error.message || 'Erro ao salvar produto.', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        showAlert('Erro de conexão com o servidor', 'error');
+        console.error('Erro em salvarProduto:', error);
+        showAlert('Erro de conexão com o servidor.', 'error');
     } finally {
         hideLoading();
     }
 }
 
-async function editarProduto(id) {
+function editarProduto(id) {
     const produto = produtos.find(p => p.id === id);
     if (!produto) return;
     
     editandoProduto = produto;
     
-    // Preencher formulário
     document.getElementById('produtoId').value = produto.id;
     document.getElementById('nome').value = produto.nome;
     document.getElementById('categoria').value = produto.categoria;
     document.getElementById('descricao').value = produto.descricao || '';
     document.getElementById('urlDestinoIndividual').value = produto.url_destino || '';
     
-    // Carregar imagens existentes
     imagensTemporarias = [];
-    if (produto.imagens) {
+    if (produto.imagens && typeof produto.imagens === 'string') {
         const urls = produto.imagens.split(',');
         urls.forEach((url, index) => {
             if (url.trim()) {
@@ -227,7 +214,6 @@ async function editarProduto(id) {
     }
     updateImagePreview();
     
-    // Mostrar formulário
     document.getElementById('formTitle').textContent = '✏️ Editar Produto';
     document.getElementById('productForm').classList.add('active');
 }
@@ -246,13 +232,13 @@ async function excluirProduto(id) {
         
         if (response.ok) {
             showAlert('Produto excluído com sucesso!');
-            carregarProdutos();
+            await carregarProdutos();
         } else {
-            showAlert('Erro ao excluir produto', 'error');
+            showAlert('Erro ao excluir produto.', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        showAlert('Erro de conexão com o servidor', 'error');
+        console.error('Erro em excluirProduto:', error);
+        showAlert('Erro de conexão com o servidor.', 'error');
     } finally {
         hideLoading();
     }
@@ -262,7 +248,7 @@ async function enviarCatalogo() {
     const urlDestino = document.getElementById('urlDestino').value;
     
     if (!urlDestino) {
-        showAlert('Por favor, configure a URL de destino', 'error');
+        showAlert('Por favor, configure a URL de destino.', 'error');
         return;
     }
     
@@ -288,11 +274,11 @@ async function enviarCatalogo() {
         if (response.ok && result.success) {
             showAlert(`Catálogo enviado com sucesso! ${result.total_produtos} produtos enviados.`);
         } else {
-            showAlert(result.message || 'Erro ao enviar catálogo', 'error');
+            showAlert(result.message || 'Erro ao enviar catálogo.', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        showAlert('Erro de conexão com o servidor', 'error');
+        console.error('Erro em enviarCatalogo:', error);
+        showAlert('Erro de conexão com o servidor.', 'error');
     } finally {
         hideLoading();
     }
@@ -302,7 +288,7 @@ async function enviarCatalogo() {
 function renderizarProdutos() {
     const grid = document.getElementById('productsGrid');
     
-    if (produtos.length === 0) {
+    if (!produtos || produtos.length === 0) {
         grid.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #6c757d;">
                 <h3>📦 Nenhum produto cadastrado</h3>
@@ -313,7 +299,7 @@ function renderizarProdutos() {
     }
     
     grid.innerHTML = produtos.map(produto => {
-        const primeiraImagem = produto.imagens ? produto.imagens.split(',')[0].trim() : null;
+        const primeiraImagem = (produto.imagens && typeof produto.imagens === 'string') ? produto.imagens.split(',')[0].trim() : null;
         const dataFormatada = produto.data ? new Date(produto.data).toLocaleDateString('pt-BR') : '';
         
         return `
@@ -321,7 +307,7 @@ function renderizarProdutos() {
                 <div class="product-image">
                     ${primeiraImagem ? 
                         `<img src="${primeiraImagem}" alt="${produto.nome}">` : 
-                        '📷 Sem imagem'
+                        '<div class="no-image">📷 Sem imagem</div>'
                     }
                 </div>
                 <div class="product-info">
@@ -343,15 +329,3 @@ function renderizarProdutos() {
         `;
     }).join('');
 }
-
-// Função para formatar data
-function formatarData(dataString) {
-    if (!dataString) return '';
-    const data = new Date(dataString);
-    return data.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-}
-
