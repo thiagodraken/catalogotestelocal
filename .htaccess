@@ -1,0 +1,40 @@
+RewriteEngine On
+
+# Redirecionar chamadas da API para o Flask
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^api/(.*)$ /cgi-bin/catalogo-produtos.cgi/$1 [QSA,L]
+
+# Servir arquivos estáticos normalmente
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.html [QSA,L]
+
+# Proteger arquivos Python
+<Files "*.py">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Proteger ambiente virtual
+<Directory "venv">
+    Order allow,deny
+    Deny from all
+</Directory>
+
+# Proteger banco de dados
+<Files "*.db">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Proteger arquivos de configuração
+<Files "*.wsgi">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "requirements.txt">
+    Order allow,deny
+    Deny from all
+</Files>
+
